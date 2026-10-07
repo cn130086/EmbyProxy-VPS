@@ -466,16 +466,35 @@ async function handleProxy(req, res, pathname, search) {
         // 静态资源缓存（非鉴权）
         if (isStatic && enableCache && !authLike && req.method === 'GET' && status === 200) {
           const buf = Buffer.from(await upstreamRes.arrayBuffer());
-          const headersOut = { ...upstreamHeaders, 'Cache-Control': 'public, max-age=86400' };
+                    const headersOut = { ...upstreamHeaders };
+          // [EMBYPROXY_FIX_V1] 去掉已解压的 content-encoding
+          if (headersOut['content-encoding'] && /^(gzip|deflate|br)$/i.test(headersOut['content-encoding'])) {
+            delete headersOut['content-encoding'];
+          }
           delete headersOut['content-length'];
-          headersOut['Content-Length'] = String(buf.length);
+          for (const k of Object.keys(headersOut)) {
+            if (k.toLowerCase() === 'cache-control') delete headersOut[k];
+          }
+          headersOut['Cache-Control'] = 'public, max-age=86400';
+headersOut['Content-Length'] = String(buf.length);
           putCache(candidateUrl, buf, headersOut);
           res.writeHead(status, headersOut);
           res.end(buf);
           return;
         }
-
         // 其他（媒体流等）：流式透传
+        // [EMBYPROXY_FIX_V1] undici 已自动解压 gzip/deflate/br，必须去掉 content-encoding，否则客户端二次解压失败
+        if (upstreamHeaders['content-encoding'] && /^(gzip|deflate|br)$/i.test(upstreamHeaders['content-encoding'])) {
+          delete upstreamHeaders['content-encoding'];
+          delete upstreamHeaders['content-length'];
+        }
+        // [EMBYPROXY_FIX_V1] 上游 max-age=31536000（一年）太长，改成 1 天
+        for (const k of Object.keys(upstreamHeaders)) {
+          if (k.toLowerCase() === 'cache-control') {
+            if (/max-age=\d{6,}/i.test(upstreamHeaders[k])) upstreamHeaders[k] = 'public, max-age=86400';
+            if (k !== 'cache-control') { upstreamHeaders['cache-control'] = upstreamHeaders[k]; delete upstreamHeaders[k]; }
+          }
+        }
         res.writeHead(status, upstreamHeaders);
         if (upstreamRes.body) {
           for await (const chunk of upstreamRes.body) {
