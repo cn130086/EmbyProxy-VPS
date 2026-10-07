@@ -18,7 +18,7 @@ PORT="${PORT:-3333}"                      # 面板端口（不占用 80/443）
 INSTALL_DIR="${INSTALL_DIR:-/opt/emby-proxy}"
 SERVICE_NAME="emby-proxy"
 # GitHub 发布地址：把下面改成你自己的仓库（上传后一行即可）
-GITHUB_RAW="https://raw.githubusercontent.com/MakkaPakka518/EmbyProxy-VPS/refs/heads/main"
+GITHUB_RAW="https://raw.githubusercontent.com/cn130086/EmbyProxy-VPS/refs/heads/main"
 
 # ============ 输出工具 ============
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
